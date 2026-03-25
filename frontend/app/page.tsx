@@ -151,7 +151,7 @@ export default function HomePage() {
               id="query"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Exemple : Yves Jean Adolphe Capitaine 1920 Vannes"
+              placeholder="Exemple : Jean Martin 1892 Nantes"
               style={{
                 padding: "16px 18px",
                 fontSize: 16,
