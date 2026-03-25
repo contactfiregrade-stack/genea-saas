@@ -4,3 +4,9 @@ export type SearchResponse = {
   raw_query: string;
   normalized_query: string;
 };
+
+export type SearchRequest = {
+  query: string;
+  user_id?: string | null;
+  opt_in_indexing: boolean;
+};
