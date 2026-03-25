@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import SearchForm from "../components/SearchForm";
 import SearchResults from "../components/SearchResults";
 import { runSearch } from "../lib/api";
@@ -10,57 +11,79 @@ export default function HomePage() {
   const [data, setData] = useState<SearchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSearch(payload: {
-    query: string;
-    opt_in_indexing: boolean;
-  }) {
+  async function handleSearch(payload: { query: string; opt_in_indexing: boolean }) {
     try {
       setError(null);
-      setData(null);
-
       const result = await runSearch({
         query: payload.query,
         user_id: null,
         opt_in_indexing: payload.opt_in_indexing,
       });
-
       setData(result);
     } catch (err) {
       console.error(err);
-      setError("La recherche a échoué.");
+      setError("La recherche a échoué. Vérifie la connexion avec le backend.");
     }
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 px-6 py-12">
-      <div className="mx-auto max-w-3xl space-y-10">
-        
-        {/* HERO */}
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold">
-            Retrouver vos ancêtres, intelligemment
-          </h1>
-          <p className="text-gray-600 text-lg">
-            Analyse automatique des archives et identification des bonnes correspondances.
-          </p>
-        </div>
+    <main className="min-h-screen bg-[var(--bg)] text-[var(--foreground)]">
+      <header className="border-b border-white/10 bg-[var(--nav-bg)] text-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+          <div>
+            <p className="text-lg font-semibold">Genea</p>
+            <p className="text-xs text-slate-400">Assistant de recherche généalogique</p>
+          </div>
 
-        {/* SEARCH */}
+          <nav className="hidden gap-2 md:flex">
+            <Link className="nav-item nav-item-active" href="/">
+              Recherche
+            </Link>
+            <Link className="nav-item" href="/dossiers">
+              Dossiers
+            </Link>
+            <Link className="nav-item" href="/historique">
+              Historique
+            </Link>
+            <Link className="nav-item" href="/sources">
+              Sources
+            </Link>
+            <Link className="nav-item" href="/admin">
+              Admin
+            </Link>
+          </nav>
+
+          <span className="rounded-full border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-3 py-1 text-xs font-medium text-[var(--accent)]">
+            V1
+          </span>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+        <section className="hero-block">
+          <div className="max-w-3xl space-y-5">
+            <div className="hero-pill">
+              Analyse d’archives • Correspondances • Sources qualifiées
+            </div>
+
+            <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+              Retrouver vos ancêtres, avec une recherche plus claire et plus utile.
+            </h1>
+
+            <p className="text-base leading-7 text-slate-300 sm:text-lg">
+              Interrogez des sources d’archives, préparez l’identification des documents
+              pertinents, et posez la base d’une analyse généalogique assistée.
+            </p>
+          </div>
+        </section>
+
         <SearchForm onSubmit={handleSearch} />
 
-        {/* EXAMPLES */}
-        <div className="text-sm text-gray-500 space-y-1">
-          <p className="font-medium">Exemples :</p>
-          <p>• Jean Martin, né en 1892 à Nantes</p>
-          <p>• Marie Dupont mariage 1875 Lyon</p>
-          <p>• Pierre Durand recensement 1911 Bordeaux</p>
-        </div>
-
-        {error && (
-          <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm">
+        {error ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
-        )}
+        ) : null}
 
         <SearchResults data={data} />
       </div>
