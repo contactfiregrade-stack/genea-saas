@@ -35,7 +35,16 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "serpapi_configured": bool(SERPAPI_KEY)}
+    masked = ""
+    if SERPAPI_KEY:
+        masked = f"{SERPAPI_KEY[:4]}...{SERPAPI_KEY[-4:]}"
+    return {
+        "status": "ok",
+        "serpapi_configured": bool(SERPAPI_KEY),
+        "serpapi_key_length": len(SERPAPI_KEY),
+        "serpapi_key_masked": masked,
+        "serpapi_key_has_spaces": SERPAPI_KEY != SERPAPI_KEY.strip(),
+    }
 
 
 def build_genealogy_query(user_query: str) -> str:
