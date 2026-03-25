@@ -1,4 +1,4 @@
-import { SearchResponse } from "@/lib/types";
+import { SearchResponse } from "./types";
 
 export async function runSearch(payload: {
   query: string;
