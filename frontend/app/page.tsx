@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type ResultItem = {
   id?: string;
@@ -14,6 +14,8 @@ type ResultItem = {
   location?: string;
 };
 
+const STORAGE_KEY = "genea_search_query";
+
 export default function HomePage() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ResultItem[]>([]);
@@ -21,11 +23,22 @@ export default function HomePage() {
   const [error, setError] = useState("");
   const [hasSearched, setHasSearched] = useState(false);
 
+  useEffect(() => {
+    const savedQuery = window.localStorage.getItem(STORAGE_KEY);
+    if (savedQuery) {
+      setQuery(savedQuery);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(STORAGE_KEY, query);
+  }, [query]);
+
   async function handleSearch() {
-    if (!query.trim()) {
+    const trimmed = query.trim();
+
+    if (!trimmed) {
       setError("Entre une recherche.");
-      setResults([]);
-      setHasSearched(false);
       return;
     }
 
@@ -39,19 +52,27 @@ export default function HomePage() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ query: query.trim() })
+        body: JSON.stringify({ query: trimmed })
       });
 
-      if (!response.ok) {
-        throw new Error(`Erreur API: ${response.status}`);
+      const text = await response.text();
+
+      let data: any = null;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(`Réponse non JSON: ${text}`);
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || `Erreur API ${response.status}`);
+      }
+
       setResults(Array.isArray(data.results) ? data.results : []);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Le moteur de recherche est indisponible pour le moment.");
       setResults([]);
+      setError(err?.message || "Erreur inconnue.");
     } finally {
       setLoading(false);
     }
