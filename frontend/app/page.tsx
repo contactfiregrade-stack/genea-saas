@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import SearchForm from "@/components/SearchForm";
-import SearchResults from "@/components/SearchResults";
-import { runSearch } from "@/lib/api";
-import { SearchResponse } from "@/lib/types";
+import SearchForm from "../components/SearchForm";
+import SearchResults from "../components/SearchResults";
+import { runSearch } from "../lib/api";
+import { SearchResponse } from "../lib/types";
 
 export default function HomePage() {
   const [data, setData] = useState<SearchResponse | null>(null);
