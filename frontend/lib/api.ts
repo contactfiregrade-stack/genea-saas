@@ -10,29 +10,19 @@ function getBaseUrl() {
   return baseUrl;
 }
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export async function wakeBackend(): Promise<boolean> {
   const baseUrl = getBaseUrl();
 
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const res = await fetch(`${baseUrl}/health`, {
-        method: "GET",
-        cache: "no-store",
-      });
+  const res = await fetch(`${baseUrl}/health`, {
+    method: "GET",
+    cache: "no-store",
+  });
 
-      if (res.ok) return true;
-    } catch (err) {
-      console.error("Wake attempt failed:", err);
-    }
-
-    await sleep(2000);
+  if (!res.ok) {
+    throw new Error(`Health check failed with status ${res.status}`);
   }
 
-  throw new Error("Backend wake-up failed");
+  return true;
 }
 
 export async function runSearch(payload: SearchRequest): Promise<SearchResponse> {
@@ -47,10 +37,25 @@ export async function runSearch(payload: SearchRequest): Promise<SearchResponse>
     cache: "no-store",
   });
 
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(errorText || "Erreur lors de la recherche");
+  let body: any = null;
+  const text = await res.text();
+
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch {
+    body = text;
   }
 
-  return res.json();
+  if (!res.ok) {
+    const detail =
+      typeof body === "object" && body?.detail
+        ? body.detail
+        : typeof body === "string"
+        ? body
+        : `HTTP ${res.status}`;
+
+    throw new Error(detail);
+  }
+
+  return body as SearchResponse;
 }
