@@ -1,4 +1,4 @@
-import { SearchResponse } from "@/lib/types";
+import { SearchResponse } from "../lib/types";
 
 type Props = {
   data: SearchResponse | null;
