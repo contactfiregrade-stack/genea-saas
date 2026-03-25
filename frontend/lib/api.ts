@@ -25,7 +25,9 @@ export async function wakeBackend(): Promise<boolean> {
   return true;
 }
 
-export async function runSearch(payload: SearchRequest): Promise<SearchResponse> {
+export async function runSearch(
+  payload: SearchRequest
+): Promise<SearchResponse> {
   const baseUrl = getBaseUrl();
 
   const res = await fetch(`${baseUrl}/search`, {
@@ -39,7 +41,7 @@ export async function runSearch(payload: SearchRequest): Promise<SearchResponse>
 
   const text = await res.text();
 
-  let body: any = null;
+  let body: unknown = null;
   try {
     body = text ? JSON.parse(text) : null;
   } catch {
@@ -48,11 +50,14 @@ export async function runSearch(payload: SearchRequest): Promise<SearchResponse>
 
   if (!res.ok) {
     const detail =
-      typeof body === "object" && body?.detail
-        ? body.detail
+      typeof body === "object" &&
+      body !== null &&
+      "detail" in body &&
+      typeof (body as { detail?: unknown }).detail === "string"
+        ? (body as { detail: string }).detail
         : typeof body === "string"
-          ? body
-          : `HTTP ${res.status}`;
+        ? body
+        : `HTTP ${res.status}`;
 
     throw new Error(detail);
   }
