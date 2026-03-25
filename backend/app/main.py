@@ -1,5 +1,4 @@
 import os
-from urllib.parse import quote_plus
 
 import requests
 from fastapi import FastAPI
@@ -24,6 +23,7 @@ app.add_middleware(
 
 SERPAPI_KEY = os.getenv("SERPAPI_KEY", "")
 
+
 class SearchRequest(BaseModel):
     query: str
 
@@ -43,7 +43,7 @@ def build_genealogy_query(user_query: str) -> str:
     return (
         f'{user_query} '
         f'(site:archivesdepartementales.fr OR site:francearchives.gouv.fr OR site:gallica.bnf.fr) '
-        f'(registre OR matricule OR état civil OR genealogie OR archives)'
+        f'(registre OR matricule OR "état civil" OR genealogie OR archives)'
     )
 
 
@@ -75,19 +75,9 @@ def search(req: SearchRequest):
 
     if not SERPAPI_KEY:
         return {
-            "results": [
-                {
-                    "id": "1",
-                    "title": "Clé SerpAPI manquante",
-                    "source": "Configuration backend",
-                    "url": "",
-                    "excerpt": "Ajoute la variable d'environnement SERPAPI_KEY dans Render pour activer la recherche web réelle.",
-                    "score": 0,
-                    "document_type": "Configuration",
-                    "date": "",
-                    "location": ""
-                }
-            ]
+            "results": [],
+            "error": "missing_serpapi_key",
+            "message": "SERPAPI_KEY est absente de la configuration Render."
         }
 
     google_query = build_genealogy_query(query)
@@ -101,18 +91,67 @@ def search(req: SearchRequest):
         "num": 10,
     }
 
-    response = requests.get(
-        "https://serpapi.com/search.json",
-        params=params,
-        timeout=25,
-    )
-    response.raise_for_status()
-    data = response.json()
+    try:
+        response = requests.get(
+            "https://serpapi.com/search.json",
+            params=params,
+            timeout=25,
+        )
 
-    organic_results = data.get("organic_results", [])
+        # On essaie de parser la réponse JSON, même si le statut HTTP est mauvais
+        try:
+            data = response.json()
+        except Exception:
+            return {
+                "results": [],
+                "error": "invalid_serpapi_response",
+                "message": f"Réponse non JSON de SerpAPI. HTTP {response.status_code}.",
+                "raw_text": response.text[:500]
+            }
 
-    results = []
-    for i, item in enumerate(organic_results[:8], start=1):
-        results.append(map_result(item, i))
+        if response.status_code != 200:
+            return {
+                "results": [],
+                "error": "serpapi_http_error",
+                "message": f"SerpAPI a répondu avec HTTP {response.status_code}.",
+                "details": data
+            }
 
-    return {"results": results}
+        if "error" in data:
+            return {
+                "results": [],
+                "error": "serpapi_error",
+                "message": str(data.get("error")),
+                "details": data
+            }
+
+        organic_results = data.get("organic_results", [])
+        results = [map_result(item, i) for i, item in enumerate(organic_results[:8], start=1)]
+
+        return {
+            "results": results,
+            "debug": {
+                "query": query,
+                "google_query": google_query,
+                "count": len(results)
+            }
+        }
+
+    except requests.Timeout:
+        return {
+            "results": [],
+            "error": "timeout",
+            "message": "Le moteur externe a mis trop de temps à répondre."
+        }
+    except requests.RequestException as e:
+        return {
+            "results": [],
+            "error": "request_exception",
+            "message": str(e)
+        }
+    except Exception as e:
+        return {
+            "results": [],
+            "error": "unexpected_backend_error",
+            "message": str(e)
+        }
