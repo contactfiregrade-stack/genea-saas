@@ -37,9 +37,9 @@ export async function runSearch(payload: SearchRequest): Promise<SearchResponse>
     cache: "no-store",
   });
 
-  let body: any = null;
   const text = await res.text();
 
+  let body: any = null;
   try {
     body = text ? JSON.parse(text) : null;
   } catch {
@@ -51,8 +51,8 @@ export async function runSearch(payload: SearchRequest): Promise<SearchResponse>
       typeof body === "object" && body?.detail
         ? body.detail
         : typeof body === "string"
-        ? body
-        : `HTTP ${res.status}`;
+          ? body
+          : `HTTP ${res.status}`;
 
     throw new Error(detail);
   }
