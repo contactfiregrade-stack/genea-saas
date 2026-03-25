@@ -16,7 +16,7 @@
     "@types/react": "18.3.3",
     "@types/node": "20.14.10"
   }
-}
+},
 {
   "devDependencies": {
     "autoprefixer": "^10.4.20",
