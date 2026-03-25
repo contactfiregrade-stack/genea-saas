@@ -1,3 +1,7 @@
+import os
+from urllib.parse import quote_plus
+
+import requests
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -18,40 +22,97 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+SERPAPI_KEY = os.getenv("SERPAPI_KEY", "")
+
 class SearchRequest(BaseModel):
     query: str
+
 
 @app.get("/")
 def root():
     return {"status": "ok"}
 
-@app.post("/search")
-def search(req: SearchRequest):
-    q = req.query.strip()
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "serpapi_configured": bool(SERPAPI_KEY)}
+
+
+def build_genealogy_query(user_query: str) -> str:
+    user_query = user_query.strip()
+    return (
+        f'{user_query} '
+        f'(site:archivesdepartementales.fr OR site:francearchives.gouv.fr OR site:gallica.bnf.fr) '
+        f'(registre OR matricule OR état civil OR genealogie OR archives)'
+    )
+
+
+def map_result(item: dict, index: int) -> dict:
+    title = item.get("title", "Résultat sans titre")
+    link = item.get("link", "")
+    snippet = item.get("snippet", "Aucun extrait disponible.")
+    source = item.get("source") or item.get("displayed_link") or "Source web"
 
     return {
-        "results": [
-            {
-                "id": "1",
-                "title": f"Registre matricule correspondant à « {q} »",
-                "source": "Archives départementales du Morbihan",
-                "url": "https://genea-saas.onrender.com/",
-                "excerpt": f"Résultat simulé pour la recherche « {q} ». Ici s’afficheront ensuite les vrais extraits documentaires trouvés sur les sources publiques.",
-                "score": 95,
-                "document_type": "Fiche matricule",
-                "date": "1920",
-                "location": "Vannes"
-            },
-            {
-                "id": "2",
-                "title": f"Table décennale liée à « {q} »",
-                "source": "Archives départementales",
-                "url": "https://genea-saas.onrender.com/docs",
-                "excerpt": "Entrée potentiellement pertinente dans une table décennale ou un index d’archives. Cette carte sera remplacée par un vrai document trouvé en ligne.",
-                "score": 81,
-                "document_type": "Table décennale",
-                "date": "1913-1922",
-                "location": "Vannes"
-            }
-        ]
+        "id": str(index),
+        "title": title,
+        "source": source,
+        "url": link,
+        "excerpt": snippet,
+        "score": max(50, 100 - index * 7),
+        "document_type": "Résultat web",
+        "date": "",
+        "location": ""
     }
+
+
+@app.post("/search")
+def search(req: SearchRequest):
+    query = req.query.strip()
+
+    if not query:
+        return {"results": []}
+
+    if not SERPAPI_KEY:
+        return {
+            "results": [
+                {
+                    "id": "1",
+                    "title": "Clé SerpAPI manquante",
+                    "source": "Configuration backend",
+                    "url": "",
+                    "excerpt": "Ajoute la variable d'environnement SERPAPI_KEY dans Render pour activer la recherche web réelle.",
+                    "score": 0,
+                    "document_type": "Configuration",
+                    "date": "",
+                    "location": ""
+                }
+            ]
+        }
+
+    google_query = build_genealogy_query(query)
+
+    params = {
+        "engine": "google",
+        "q": google_query,
+        "api_key": SERPAPI_KEY,
+        "hl": "fr",
+        "gl": "fr",
+        "num": 10,
+    }
+
+    response = requests.get(
+        "https://serpapi.com/search.json",
+        params=params,
+        timeout=25,
+    )
+    response.raise_for_status()
+    data = response.json()
+
+    organic_results = data.get("organic_results", [])
+
+    results = []
+    for i, item in enumerate(organic_results[:8], start=1):
+        results.append(map_result(item, i))
+
+    return {"results": results}
