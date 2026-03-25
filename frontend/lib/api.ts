@@ -10,19 +10,29 @@ function getBaseUrl() {
   return baseUrl;
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function wakeBackend(): Promise<boolean> {
   const baseUrl = getBaseUrl();
 
-  const res = await fetch(`${baseUrl}/health`, {
-    method: "GET",
-    cache: "no-store",
-  });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(`${baseUrl}/health`, {
+        method: "GET",
+        cache: "no-store",
+      });
 
-  if (!res.ok) {
-    throw new Error("Backend wake-up failed");
+      if (res.ok) return true;
+    } catch (err) {
+      console.error("Wake attempt failed:", err);
+    }
+
+    await sleep(2000);
   }
 
-  return true;
+  throw new Error("Backend wake-up failed");
 }
 
 export async function runSearch(payload: SearchRequest): Promise<SearchResponse> {
