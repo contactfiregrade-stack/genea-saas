@@ -1,28 +1,53 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
 import SearchForm from "../components/SearchForm";
 import SearchResults from "../components/SearchResults";
-import { runSearch } from "../lib/api";
+import { runSearch, wakeBackend } from "../lib/api";
 import { SearchResponse } from "../lib/types";
 
 export default function HomePage() {
   const [data, setData] = useState<SearchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [backendReady, setBackendReady] = useState(false);
+  const [warmingUp, setWarmingUp] = useState(true);
+
+  useEffect(() => {
+    async function wake() {
+      try {
+        await wakeBackend();
+        setBackendReady(true);
+      } catch (err) {
+        console.error("Wake backend failed:", err);
+      } finally {
+        setWarmingUp(false);
+      }
+    }
+
+    wake();
+  }, []);
 
   async function handleSearch(payload: { query: string; opt_in_indexing: boolean }) {
     try {
       setError(null);
+
+      if (!backendReady) {
+        setWarmingUp(true);
+        await wakeBackend();
+        setBackendReady(true);
+        setWarmingUp(false);
+      }
+
       const result = await runSearch({
         query: payload.query,
         user_id: null,
         opt_in_indexing: payload.opt_in_indexing,
       });
+
       setData(result);
     } catch (err) {
       console.error(err);
-      setError("La recherche a échoué. Vérifie la connexion avec le backend.");
+      setError("Le moteur met trop de temps à répondre. Réessaie dans quelques secondes.");
     }
   }
 
@@ -34,28 +59,6 @@ export default function HomePage() {
             <p className="text-lg font-semibold">Genea</p>
             <p className="text-xs text-slate-400">Assistant de recherche généalogique</p>
           </div>
-
-          <nav className="hidden gap-2 md:flex">
-            <Link className="nav-item nav-item-active" href="/">
-              Recherche
-            </Link>
-            <Link className="nav-item" href="/dossiers">
-              Dossiers
-            </Link>
-            <Link className="nav-item" href="/historique">
-              Historique
-            </Link>
-            <Link className="nav-item" href="/sources">
-              Sources
-            </Link>
-            <Link className="nav-item" href="/admin">
-              Admin
-            </Link>
-          </nav>
-
-          <span className="rounded-full border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-3 py-1 text-xs font-medium text-[var(--accent)]">
-            V1
-          </span>
         </div>
       </header>
 
@@ -76,6 +79,18 @@ export default function HomePage() {
             </p>
           </div>
         </section>
+
+        {warmingUp ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            Connexion au moteur en cours…
+          </div>
+        ) : null}
+
+        {backendReady ? (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+            Moteur prêt.
+          </div>
+        ) : null}
 
         <SearchForm onSubmit={handleSearch} />
 
