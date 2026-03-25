@@ -64,8 +64,12 @@ export default function HomePage() {
         throw new Error(`Réponse non JSON: ${text}`);
       }
 
-      if (!response.ok) {
-        throw new Error(data?.message || `Erreur API ${response.status}`);
+          if (!response.ok) {
+        throw new Error(
+          data?.message ||
+            data?.error ||
+            `Erreur API ${response.status}: ${text}`
+        );
       }
 
       setResults(Array.isArray(data.results) ? data.results : []);
