@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 type ResultItem = {
-  id: string;
+  id?: string;
   title: string;
   score: number;
   excerpt: string;
@@ -11,47 +11,47 @@ type ResultItem = {
   tags: string[];
 };
 
-const mockResults: ResultItem[] = [
-  {
-    id: "1",
-    title: "Registre des naissances d’Agen — 1872",
-    score: 92,
-    excerpt:
-      "Jean Martin apparaît dans un acte de naissance daté de 1872, avec mention d’Agen et d’un lien parental probable.",
-    source: "Archives départementales",
-    tags: ["nom détecté", "année exacte", "lieu cohérent"]
-  },
-  {
-    id: "2",
-    title: "Table décennale — Agen 1863–1872",
-    score: 84,
-    excerpt:
-      "Occurrence du patronyme Martin sur la période, avec une entrée compatible avec la recherche demandée.",
-    source: "Table décennale",
-    tags: ["patronyme proche", "période cohérente"]
-  },
-  {
-    id: "3",
-    title: "Bulletin local numérisé",
-    score: 71,
-    excerpt:
-      "Mention secondaire du nom Martin dans un contexte géographique similaire, sans certitude forte sur l’identité.",
-    source: "Presse ancienne",
-    tags: ["indice faible", "à vérifier"]
-  }
-];
-
 export default function HomePage() {
   const [query, setQuery] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [results, setResults] = useState<ResultItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [hasSearched, setHasSearched] = useState(false);
 
-  const visibleResults = useMemo(() => {
-    if (!submitted) return [];
-    return mockResults;
-  }, [submitted]);
+  async function handleSearch() {
+    if (!query.trim()) {
+      setError("Entre une recherche avant de lancer l’analyse.");
+      setResults([]);
+      setHasSearched(false);
+      return;
+    }
 
-  function handleSearch() {
-    setSubmitted(true);
+    setLoading(true);
+    setError("");
+    setHasSearched(true);
+
+    try {
+      const response = await fetch("https://genea-saas.onrender.com/search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ query: query.trim() })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erreur API: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setResults(Array.isArray(data.results) ? data.results : []);
+    } catch (err) {
+      console.error(err);
+      setError("Le moteur de recherche est indisponible pour le moment.");
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -84,7 +84,7 @@ export default function HomePage() {
               marginBottom: 16
             }}
           >
-            Prototype V1
+            Prototype V1 connecté
           </div>
 
           <h1
@@ -155,20 +155,33 @@ export default function HomePage() {
             />
             <button
               onClick={handleSearch}
+              disabled={loading}
               style={{
                 border: "none",
                 borderRadius: 14,
                 padding: "16px 20px",
                 fontSize: 16,
                 fontWeight: 600,
-                background: "#111827",
+                background: loading ? "#6b7280" : "#111827",
                 color: "#ffffff",
-                cursor: "pointer"
+                cursor: loading ? "not-allowed" : "pointer"
               }}
             >
-              Rechercher
+              {loading ? "Recherche..." : "Rechercher"}
             </button>
           </div>
+
+          {error && (
+            <p
+              style={{
+                marginTop: 12,
+                color: "#b91c1c",
+                fontSize: 14
+              }}
+            >
+              {error}
+            </p>
+          )}
 
           <div
             style={{
@@ -180,7 +193,7 @@ export default function HomePage() {
           >
             {[
               "Nom + date + lieu",
-              "Top résultats scorés",
+              "Résultats backend réels",
               "Extraits utiles",
               "Base prête pour premium"
             ].map((item) => (
@@ -213,7 +226,7 @@ export default function HomePage() {
               gap: 16
             }}
           >
-            {!submitted && (
+            {!hasSearched && (
               <div
                 style={{
                   background: "#ffffff",
@@ -223,13 +236,27 @@ export default function HomePage() {
                   color: "#6b7280"
                 }}
               >
-                Lance une recherche pour voir les résultats documentaires.
+                Lance une recherche pour interroger le backend Render.
               </div>
             )}
 
-            {visibleResults.map((result) => (
+            {hasSearched && !loading && results.length === 0 && !error && (
+              <div
+                style={{
+                  background: "#ffffff",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 20,
+                  padding: 24,
+                  color: "#6b7280"
+                }}
+              >
+                Aucun résultat retourné.
+              </div>
+            )}
+
+            {results.map((result, index) => (
               <article
-                key={result.id}
+                key={result.id ?? `${result.title}-${index}`}
                 style={{
                   background: "#ffffff",
                   border: "1px solid #e5e7eb",
@@ -333,11 +360,11 @@ export default function HomePage() {
                 padding: 20
               }}
             >
-              <h3 style={{ marginTop: 0 }}>Positionnement produit</h3>
+              <h3 style={{ marginTop: 0 }}>Statut</h3>
               <p style={{ color: "#4b5563", lineHeight: 1.6 }}>
-                Cette V1 valide le cœur du produit : trouver, classer et
-                expliquer les meilleurs documents avant d’ajouter comptes,
-                sauvegarde premium et téléchargement.
+                Le frontend Vercel appelle maintenant le backend Render.
+                L’étape suivante sera de remplacer le faux moteur par une vraie
+                logique de recherche documentaire.
               </p>
             </div>
 
@@ -349,7 +376,7 @@ export default function HomePage() {
                 padding: 20
               }}
             >
-              <h3 style={{ marginTop: 0 }}>Suite logique</h3>
+              <h3 style={{ marginTop: 0 }}>Prochaines briques</h3>
               <ul
                 style={{
                   paddingLeft: 18,
@@ -358,10 +385,10 @@ export default function HomePage() {
                   marginBottom: 0
                 }}
               >
-                <li>brancher FastAPI sur Render</li>
-                <li>ajouter Supabase Auth</li>
-                <li>sauvegarde de documents premium</li>
-                <li>téléchargement public</li>
+                <li>autoriser CORS côté backend si besoin</li>
+                <li>brancher Supabase Auth</li>
+                <li>stocker recherches et documents sauvegardés</li>
+                <li>remplacer les résultats simulés backend</li>
               </ul>
             </div>
           </aside>
