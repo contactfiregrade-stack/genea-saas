@@ -5,10 +5,13 @@ import { useState } from "react";
 type ResultItem = {
   id?: string;
   title: string;
-  score: number;
-  excerpt: string;
   source: string;
-  tags: string[];
+  url?: string;
+  excerpt: string;
+  score: number;
+  document_type?: string;
+  date?: string;
+  location?: string;
 };
 
 export default function HomePage() {
@@ -20,7 +23,7 @@ export default function HomePage() {
 
   async function handleSearch() {
     if (!query.trim()) {
-      setError("Entre une recherche avant de lancer l’analyse.");
+      setError("Entre une recherche.");
       setResults([]);
       setHasSearched(false);
       return;
@@ -31,7 +34,7 @@ export default function HomePage() {
     setHasSearched(true);
 
     try {
-      const response = await fetch("https://genea-saas.onrender.com/search", {
+      const response = await fetch("/api/search", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -58,56 +61,38 @@ export default function HomePage() {
     <main
       style={{
         minHeight: "100vh",
+        background: "#f6f7fb",
         padding: "48px 20px"
       }}
     >
       <div
         style={{
-          maxWidth: 1100,
+          maxWidth: 980,
           margin: "0 auto"
         }}
       >
-        <header
-          style={{
-            marginBottom: 32
-          }}
-        >
-          <div
-            style={{
-              display: "inline-block",
-              padding: "6px 12px",
-              borderRadius: 999,
-              background: "#e8eefc",
-              color: "#2447a5",
-              fontSize: 13,
-              fontWeight: 600,
-              marginBottom: 16
-            }}
-          >
-            Prototype V1 connecté
-          </div>
-
+        <header style={{ marginBottom: 28 }}>
           <h1
             style={{
               fontSize: 42,
               lineHeight: 1.1,
-              margin: "0 0 14px 0"
+              margin: "0 0 12px 0",
+              color: "#111827"
             }}
           >
-            Recherche documentaire intelligente
+            Recherche documentaire
           </h1>
 
           <p
             style={{
+              margin: 0,
               fontSize: 18,
               lineHeight: 1.6,
-              maxWidth: 760,
-              margin: 0,
-              color: "#4b5563"
+              color: "#4b5563",
+              maxWidth: 760
             }}
           >
-            Un moteur orienté généalogie et archives pour retrouver rapidement
-            les documents les plus pertinents, avec extraits et justification.
+            Recherche de documents publics utiles dans les archives et sources généalogiques.
           </p>
         </header>
 
@@ -115,22 +100,23 @@ export default function HomePage() {
           style={{
             background: "#ffffff",
             border: "1px solid #e5e7eb",
-            borderRadius: 20,
-            padding: 20,
-            boxShadow: "0 10px 30px rgba(17, 24, 39, 0.05)",
-            marginBottom: 28
+            borderRadius: 18,
+            padding: 18,
+            boxShadow: "0 8px 24px rgba(17, 24, 39, 0.05)",
+            marginBottom: 24
           }}
         >
           <label
             htmlFor="query"
             style={{
               display: "block",
+              marginBottom: 10,
               fontSize: 14,
               fontWeight: 600,
-              marginBottom: 10
+              color: "#111827"
             }}
           >
-            Ta recherche
+            Recherche
           </label>
 
           <div
@@ -144,12 +130,12 @@ export default function HomePage() {
               id="query"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Exemple : Jean Martin né vers 1872 à Agen"
+              placeholder="Exemple : Yves Jean Adolphe Capitaine 1920 Vannes"
               style={{
                 padding: "16px 18px",
+                fontSize: 16,
                 borderRadius: 14,
                 border: "1px solid #d1d5db",
-                fontSize: 16,
                 outline: "none"
               }}
             />
@@ -159,7 +145,7 @@ export default function HomePage() {
               style={{
                 border: "none",
                 borderRadius: 14,
-                padding: "16px 20px",
+                padding: "16px 22px",
                 fontSize: 16,
                 fontWeight: 600,
                 background: loading ? "#6b7280" : "#111827",
@@ -175,6 +161,7 @@ export default function HomePage() {
             <p
               style={{
                 marginTop: 12,
+                marginBottom: 0,
                 color: "#b91c1c",
                 fontSize: 14
               }}
@@ -182,216 +169,184 @@ export default function HomePage() {
               {error}
             </p>
           )}
+        </section>
 
-          <div
+        {!hasSearched && (
+          <section
             style={{
-              display: "flex",
-              gap: 10,
-              flexWrap: "wrap",
-              marginTop: 14
+              background: "#ffffff",
+              border: "1px dashed #d1d5db",
+              borderRadius: 18,
+              padding: 24,
+              color: "#6b7280"
             }}
           >
-            {[
-              "Nom + date + lieu",
-              "Résultats backend réels",
-              "Extraits utiles",
-              "Base prête pour premium"
-            ].map((item) => (
-              <span
-                key={item}
-                style={{
-                  fontSize: 13,
-                  background: "#f3f4f6",
-                  color: "#374151",
-                  padding: "8px 10px",
-                  borderRadius: 999
-                }}
-              >
-                {item}
-              </span>
-            ))}
-          </div>
-        </section>
+            Lance une recherche pour afficher les résultats trouvés.
+          </section>
+        )}
+
+        {hasSearched && !loading && results.length === 0 && !error && (
+          <section
+            style={{
+              background: "#ffffff",
+              border: "1px solid #e5e7eb",
+              borderRadius: 18,
+              padding: 24,
+              color: "#6b7280"
+            }}
+          >
+            Aucun résultat trouvé.
+          </section>
+        )}
 
         <section
           style={{
             display: "grid",
-            gridTemplateColumns: "1.2fr 0.8fr",
-            gap: 20
+            gap: 16
           }}
         >
-          <div
-            style={{
-              display: "grid",
-              gap: 16
-            }}
-          >
-            {!hasSearched && (
+          {results.map((result, index) => (
+            <article
+              key={result.id ?? `${result.title}-${index}`}
+              style={{
+                background: "#ffffff",
+                border: "1px solid #e5e7eb",
+                borderRadius: 18,
+                padding: 20,
+                boxShadow: "0 8px 24px rgba(17, 24, 39, 0.04)"
+              }}
+            >
               <div
                 style={{
-                  background: "#ffffff",
-                  border: "1px dashed #d1d5db",
-                  borderRadius: 20,
-                  padding: 24,
-                  color: "#6b7280"
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: 16,
+                  marginBottom: 10
                 }}
               >
-                Lance une recherche pour interroger le backend Render.
-              </div>
-            )}
-
-            {hasSearched && !loading && results.length === 0 && !error && (
-              <div
-                style={{
-                  background: "#ffffff",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 20,
-                  padding: 24,
-                  color: "#6b7280"
-                }}
-              >
-                Aucun résultat retourné.
-              </div>
-            )}
-
-            {results.map((result, index) => (
-              <article
-                key={result.id ?? `${result.title}-${index}`}
-                style={{
-                  background: "#ffffff",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 20,
-                  padding: 20,
-                  boxShadow: "0 10px 30px rgba(17, 24, 39, 0.04)"
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    alignItems: "start",
-                    marginBottom: 10
-                  }}
-                >
-                  <div>
-                    <h2
-                      style={{
-                        fontSize: 22,
-                        margin: "0 0 6px 0"
-                      }}
-                    >
-                      {result.title}
-                    </h2>
-                    <p
-                      style={{
-                        margin: 0,
-                        color: "#6b7280",
-                        fontSize: 14
-                      }}
-                    >
-                      Source : {result.source}
-                    </p>
-                  </div>
-
-                  <div
+                <div style={{ flex: 1 }}>
+                  <h2
                     style={{
-                      minWidth: 72,
-                      textAlign: "center",
-                      background: "#eefbf3",
-                      color: "#166534",
-                      borderRadius: 14,
-                      padding: "10px 12px",
-                      fontWeight: 700
+                      fontSize: 24,
+                      lineHeight: 1.25,
+                      margin: "0 0 8px 0",
+                      color: "#111827"
                     }}
                   >
-                    {result.score}
-                  </div>
-                </div>
+                    {result.title}
+                  </h2>
 
-                <p
-                  style={{
-                    fontSize: 16,
-                    lineHeight: 1.6,
-                    color: "#374151",
-                    marginBottom: 14
-                  }}
-                >
-                  {result.excerpt}
-                </p>
+                  <p
+                    style={{
+                      margin: "0 0 4px 0",
+                      color: "#374151",
+                      fontSize: 14
+                    }}
+                  >
+                    <strong>Source :</strong> {result.source}
+                  </p>
+                </div>
 
                 <div
                   style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 8
+                    minWidth: 72,
+                    textAlign: "center",
+                    background: "#eefbf3",
+                    color: "#166534",
+                    borderRadius: 14,
+                    padding: "10px 12px",
+                    fontWeight: 700,
+                    fontSize: 18
                   }}
                 >
-                  {result.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      style={{
-                        fontSize: 13,
-                        padding: "7px 10px",
-                        borderRadius: 999,
-                        background: "#f3f4f6",
-                        color: "#374151"
-                      }}
-                    >
-                      {tag}
-                    </span>
-                  ))}
+                  {result.score}
                 </div>
-              </article>
-            ))}
-          </div>
+              </div>
 
-          <aside
-            style={{
-              display: "grid",
-              gap: 16
-            }}
-          >
-            <div
-              style={{
-                background: "#ffffff",
-                border: "1px solid #e5e7eb",
-                borderRadius: 20,
-                padding: 20
-              }}
-            >
-              <h3 style={{ marginTop: 0 }}>Statut</h3>
-              <p style={{ color: "#4b5563", lineHeight: 1.6 }}>
-                Le frontend Vercel appelle maintenant le backend Render.
-                L’étape suivante sera de remplacer le faux moteur par une vraie
-                logique de recherche documentaire.
-              </p>
-            </div>
-
-            <div
-              style={{
-                background: "#ffffff",
-                border: "1px solid #e5e7eb",
-                borderRadius: 20,
-                padding: 20
-              }}
-            >
-              <h3 style={{ marginTop: 0 }}>Prochaines briques</h3>
-              <ul
+              <div
                 style={{
-                  paddingLeft: 18,
-                  color: "#4b5563",
-                  lineHeight: 1.8,
-                  marginBottom: 0
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 8,
+                  marginBottom: 14
                 }}
               >
-                <li>autoriser CORS côté backend si besoin</li>
-                <li>brancher Supabase Auth</li>
-                <li>stocker recherches et documents sauvegardés</li>
-                <li>remplacer les résultats simulés backend</li>
-              </ul>
-            </div>
-          </aside>
+                {result.document_type && (
+                  <span
+                    style={{
+                      fontSize: 13,
+                      padding: "7px 10px",
+                      borderRadius: 999,
+                      background: "#f3f4f6",
+                      color: "#374151"
+                    }}
+                  >
+                    {result.document_type}
+                  </span>
+                )}
+
+                {result.date && (
+                  <span
+                    style={{
+                      fontSize: 13,
+                      padding: "7px 10px",
+                      borderRadius: 999,
+                      background: "#f3f4f6",
+                      color: "#374151"
+                    }}
+                  >
+                    {result.date}
+                  </span>
+                )}
+
+                {result.location && (
+                  <span
+                    style={{
+                      fontSize: 13,
+                      padding: "7px 10px",
+                      borderRadius: 999,
+                      background: "#f3f4f6",
+                      color: "#374151"
+                    }}
+                  >
+                    {result.location}
+                  </span>
+                )}
+              </div>
+
+              <p
+                style={{
+                  margin: "0 0 16px 0",
+                  color: "#374151",
+                  fontSize: 16,
+                  lineHeight: 1.65
+                }}
+              >
+                {result.excerpt}
+              </p>
+
+              {result.url && (
+                <a
+                  href={result.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: "inline-block",
+                    textDecoration: "none",
+                    background: "#111827",
+                    color: "#ffffff",
+                    padding: "12px 16px",
+                    borderRadius: 12,
+                    fontWeight: 600,
+                    fontSize: 14
+                  }}
+                >
+                  Consulter la source
+                </a>
+              )}
+            </article>
+          ))}
         </section>
       </div>
     </main>
